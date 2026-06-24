@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>取引先 時系列 | PROTOSCAPE</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #141414;
+    --bg3: #1a1a1a;
+    --bg4: #1e1e1e;
+    --border: #222;
+    --border2: #2a2a2a;
+    --text: #f0f0f0;
+    --text2: #aaa;
+    --text3: #666;
+    --text4: #444;
+    --gold: #c8a96e;
+    --gold-dim: #a07840;
+    --green: #5cb85c;
+    --amber: #d4a843;
+    --blue: #6488c8;
+    --red: #e05555;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Helvetica Neue', 'Hiragino Sans', 'Yu Gothic', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 28px 24px 48px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { display: flex; align-items: baseline; gap: 12px; }
+  .header h1 {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+  .header .brand {
+    font-size: 11px;
+    color: var(--text4);
+    letter-spacing: 0.06em;
+  }
+  .header a {
+    font-size: 11px;
+    color: var(--text4);
+    text-decoration: none;
+  }
+  .header a:hover { color: var(--text3); }
+
+  /* ── Company tabs ── */
+  .company-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .company-tab {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text3);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .company-tab:hover { border-color: #444; color: var(--text2); }
+  .company-tab.active {
+    background: #1c160d;
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .add-tab-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px dashed #333;
+    background: transparent;
+    color: var(--text4);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: inherit;
+  }
+  .add-tab-btn:hover { border-color: #555; color: var(--text3); }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-head {
+    padding: 18px 22px 16px;
+    border-bottom: 1px solid #1c1c1c;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .panel-head-info h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+  .panel-head-info .meta {
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.7;
+  }
+  .panel-head-info .meta span {
+    color: var(--text4);
+    margin-right: 4px;
+  }
+
+  .status-pill {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+  .s-active  { background: #192919; color: var(--green);  border: 1px solid #2a412a; }
+  .s-waiting { background: #29200f; color: var(--amber);  border: 1px solid #41300f; }
+  .s-pending { background: #141929; color: var(--blue);   border: 1px solid #1e2a41; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    padding: 11px 22px;
+    border-bottom: 1px solid #1c1c1c;
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 6px 13px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: opacity 0.12s;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { opacity: 0.78; }
+  .btn:disabled { opacity: 0.38; cursor: not-allowed; }
+  .btn-gold    { background: var(--gold); color: #0f0f0f; }
+  .btn-ghost   { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+  .btn-danger  { background: #241414; color: var(--red); border: 1px solid #3a2020; }
+
+  /* ── Timeline ── */
+  .tl-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .tl-empty {
+    padding: 52px 0;
+    text-align: center;
+    color: var(--text4);
+    font-size: 13px;
+  }
+
+  .tl-item {
+    display: grid;
+    grid-template-columns: 100px 1fr 28px;
+    align-items: start;
+    gap: 0 14px;
+    padding: 11px 22px;
+    border-bottom: 1px solid #181818;
+    transition: background 0.08s;
+  }
+  .tl-item:last-child { border-bottom: none; }
+  .tl-item:hover { background: #161616; }
+
+  .tl-date {
+    font-size: 11px;
+    color: var(--text4);
+    font-feature-settings: 'tnum';
+    padding-top: 1px;
+    line-height: 1.6;
+  }
+  .tl-text {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.55;
+    word-break: break-all;
+  }
+  .tl-del {
+    background: none;
+    border: none;
+    color: var(--text4);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px;
+    border-radius: 3px;
+    line-height: 1;
+    font-family: inherit;
+    transition: color 0.1s;
+  }
+  .tl-del:hover { color: var(--red); }
+
+  /* ── Add entry ── */
+  .add-row {
+    padding: 12px 22px;
+    border-top: 1px solid #1c1c1c;
+    background: #111;
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .add-row input[type="date"] {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    color: var(--text2);
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+    width: 136px;
+    color-scheme: dark;
+    font-family: inherit;
+  }
+  .add-row input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+    font-family: inherit;
+  }
+  .add-row input:focus { border-color: var(--gold-dim); }
+
+  /* ── Sync bar ── */
+  .sync-bar {
+    padding: 8px 22px;
+    font-size: 11px;
+    color: var(--text4);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    border-top: 1px solid #181818;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-idle    { background: var(--text4); }
+  .dot-dirty   { background: var(--amber); }
+  .dot-syncing { background: var(--amber); animation: blink 0.9s infinite; }
+  .dot-ok      { background: var(--green); }
+  .dot-error   { background: var(--red); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  /* ── Modal ── */
+  .overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.72);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: #161616;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 26px 24px 22px;
+    width: 380px;
+    max-width: 92vw;
+  }
+  .modal h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 18px;
+  }
+  .modal label {
+    display: block;
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 4px;
+    letter-spacing: 0.04em;
+  }
+  .modal input, .modal select {
+    width: 100%;
+    background: var(--bg4);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 7px 10px;
+    margin-bottom: 13px;
+    outline: none;
+    font-family: inherit;
+  }
+  .modal input:focus, .modal select:focus { border-color: var(--gold-dim); }
+  .modal select { color-scheme: dark; }
+  .modal-foot {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 4px;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>🏢 取引先 時系列</h1>
+      <span class="brand">PROTOSCAPE / VISTAVAULT</span>
+    </div>
+    <a href="https://app.notion.com/p/3894db83ab26819e831ecad706ce2751" target="_blank">Notionで開く ↗</a>
+  </div>
+
+  <!-- Company tabs -->
+  <div class="company-bar" id="companyBar"></div>
+
+  <!-- Main panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-head-info">
+        <h2 id="cName">—</h2>
+        <div class="meta" id="cMeta"></div>
+      </div>
+      <div class="status-pill" id="cStatus"></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-gold" id="syncBtn" onclick="syncToNotion()">↑ Notionへ同期</button>
+      <button class="btn btn-ghost" onclick="openEditMeta()">✎ 企業情報を編集</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">✕ この企業を削除</button>
+    </div>
+
+    <div class="tl-scroll" id="tlScroll">
+      <div class="tl-empty">企業を選択してください</div>
+    </div>
+
+    <div class="add-row">
+      <input type="date" id="newDate">
+      <input type="text" id="newText" placeholder="内容を入力… (Enterで追加)">
+      <button class="btn btn-gold" onclick="addEntry()">追加</button>
+    </div>
+
+    <div class="sync-bar">
+      <div class="dot dot-idle" id="dot"></div>
+      <span id="syncMsg">—</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Add company modal ── -->
+<div class="overlay" id="addModal">
+  <div class="modal">
+    <h3>＋ 新しい企業を追加</h3>
+    <label>企業名 *</label>
+    <input id="m_name" placeholder="例: 株式会社○○（大阪）">
+    <label>担当者名・メールアドレス</label>
+    <input id="m_contact" placeholder="例: 山田 太郎（yamada@example.com）">
+    <label>業務内容</label>
+    <input id="m_biz" placeholder="例: CNC加工・試作検討">
+    <label>ステータス表示</label>
+    <input id="m_statusLabel" placeholder="例: 見積もり待ち">
+    <label>ステータス色</label>
+    <select id="m_statusType">
+      <option value="pending">青 — 未着手 / 検討中</option>
+      <option value="active">緑 — 進行中</option>
+      <option value="waiting">黄 — 返信待ち / 保留</option>
+    </select>
+    <label>NotionページID（任意・同期に必要）</label>
+    <input id="m_notionId" placeholder="例: 3894db83ab26…">
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('addModal')">キャンセル</button>
+      <button class="btn btn-gold" onclick="doAddCompany()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit meta modal ── -->
+<div class="overlay" id="editModal">
+  <div class="modal">
+    <h3>✎ 企業情報を編集</h3>
+    <label>企業名 *</label>
+    <input id="e_name">
+    <label>担当者</label>
+    <input id="e_contact">
+    <label>業務内容</label>
+    <input id="e_biz">
+    <label>ステータス表示</label>
+    <input id="e_statusLabel">
+    <label>ステータス色</label>
+    <select id="e_statusType">
+      <option value="pending">青 — 未着手 / 検討中</option>
+      <option value="active">緑 — 進行中</option>
+      <option value="waiting">黄 — 返信待ち / 保留</option>
+    </select>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('editModal')">キャンセル</button>
+      <button class="btn btn-gold" onclick="doEditMeta()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────
+// Data
+// ──────────────────────────────────────────
+const STORE_KEY = 'vv_contacts_v2';
+
+const SEED = [
+  {
+    id: 'ignite',
+    name: '株式会社IGNITE（大阪）',
+    contact: '三井 hiroki（hiroki@igni7e.jp）',
+    biz: '海外ニーズ検証（JFC融資向け）',
+    statusLabel: 'アンケート配信中',
+    statusType: 'active',
+    notionId: '3894db83-ab26-81d3-aa34-d5d5f1ead253',
+    entries: [
+      { date:'2026-05-15', text:'IGNITEより最初の返信。打ち合わせ打診' },
+      { date:'2026-05-16', text:'5/20（水）15:30〜のオンライン打ち合わせ設定' },
+      { date:'2026-05-20', text:'打ち合わせ実施。事業背景・製品説明' },
+      { date:'2026-05-21', text:'打ち合わせお礼メール。1週間以内に見積書送付予定との連絡' },
+      { date:'2026-05-27', text:'提案書・見積書（¥220,000税込）受領' },
+      { date:'2026-05-28', text:'金額・スコープ・スケジュール全て承諾。製品詳細資料を送付' },
+      { date:'2026-05-29', text:'IGNITE側で資料確認。来週中に契約書類送付予定との連絡' },
+      { date:'2026-06-02', text:'契約書草案3点（NDA・基本契約・個別契約）受領' },
+      { date:'2026-06-05', text:'契約書確認・承諾。アンケート仕様（本調査1本）について質問' },
+      { date:'2026-06-09', text:'調査方式を「本調査1本への集約」に変更。修正済み契約書＋ヒアリングシート共有' },
+      { date:'2026-06-10', text:'DocuSignで契約書署名完了。アンケート設問案受領・フィードバック（Q1選択肢追加など2点）' },
+      { date:'2026-06-12', text:'契約締結完了。フィードバック反映済み最終設問案を確認・承認' },
+      { date:'2026-06-16', text:'英語翻訳作業中との報告。翻訳完了次第、配信へ移行予定' },
+    ]
+  },
+  {
+    id: 'kyokuto',
+    name: '極東精機製作所（東京都大田区）',
+    contact: '鈴木 亮介 代表（ryosuke@kyokutouseiki.co.jp）',
+    biz: 'CNCアルミ加工・試作検討',
+    statusLabel: '返信待ち（10日経過）',
+    statusType: 'waiting',
+    notionId: '3894db83-ab26-819e-a3f7-c6f184ba67d1',
+    entries: [
+      { date:'2026-03-18', text:'極東精機営業部より最初の返信。4/1来社での打ち合わせ設定' },
+      { date:'2026-04-01', text:'大田区・極東精機を訪問（Onshapeデータ持参、20mm厚切削・EMS相談）' },
+      { date:'2026-04-02', text:'訪問お礼メール送付。ベンチャーフレンドリー塾の紹介あり' },
+      { date:'2026-04-02', text:'「蟻溝＋ちぎり×金属×圧入（冷やし嵌め）」構造を提案' },
+      { date:'2026-04-03', text:'鈴木さんより「数段上、知財としても可能性あり」と高評価の返信' },
+      { date:'2026-04-21', text:'2回目の打ち合わせ実施' },
+      { date:'2026-05-15', text:'JFC融資「保留」の結果を共有' },
+      { date:'2026-05-25', text:'鈴木さんから返信（約10日後）。IGNITEとのニーズ検証の話も共有し打ち合わせ打診' },
+      { date:'2026-06-13', text:'進捗まとめ＋CAD構造変更（ねじ止め化）＋試作相談メール送信' },
+      { date:'2026-06-14', text:'鈴木さんから返信。試作に前向きな回答' },
+      { date:'2026-06-15', text:'修正済みCADデータ（STEP形式）を送付 → 現在返信待ち（10日経過）' },
+    ]
+  }
+];
+
+let data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null') || SEED;
+let cur = data[0]?.id ?? null;
+
+const save  = () => localStorage.setItem(STORE_KEY, JSON.stringify(data));
+const getCo = () => data.find(c => c.id === cur);
+
+// ──────────────────────────────────────────
+// Render
+// ──────────────────────────────────────────
+function render() { renderTabs(); renderPanel(); }
+
+function renderTabs() {
+  const bar = document.getElementById('companyBar');
+  bar.innerHTML = '';
+  data.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'company-tab' + (c.id === cur ? ' active' : '');
+    b.textContent = c.name;
+    b.onclick = () => { cur = c.id; render(); };
+    bar.appendChild(b);
+  });
+  const add = document.createElement('button');
+  add.className = 'add-tab-btn';
+  add.textContent = '＋ 企業を追加';
+  add.onclick = openAddModal;
+  bar.appendChild(add);
+}
+
+function renderPanel() {
+  const c = getCo();
+  if (!c) return;
+  document.getElementById('cName').textContent = c.name;
+  document.getElementById('cMeta').innerHTML =
+    `<span>担当:</span>${c.contact}<br><span>業務:</span>${c.biz}`;
+  const pill = document.getElementById('cStatus');
+  pill.textContent = c.statusLabel;
+  pill.className = `status-pill s-${c.statusType}`;
+  renderTimeline(c);
+  document.getElementById('newDate').value = new Date().toISOString().slice(0,10);
+}
+
+function renderTimeline(c) {
+  const wrap = document.getElementById('tlScroll');
+  if (!c.entries.length) {
+    wrap.innerHTML = '<div class="tl-empty">エントリがありません。下のフォームから追加できます。</div>';
+    return;
+  }
+  const sorted = [...c.entries].sort((a,b) => a.date < b.date ? -1 : 1);
+  wrap.innerHTML = sorted.map((e, i) => `
+    <div class="tl-item">
+      <div class="tl-date">${esc(e.date)}</div>
+      <div class="tl-text">${esc(e.text)}</div>
+      <button class="tl-del" onclick="delEntry(${i})" title="削除">✕</button>
+    </div>
+  `).join('');
+}
+
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// ──────────────────────────────────────────
+// Entry CRUD
+// ──────────────────────────────────────────
+function addEntry() {
+  const date = document.getElementById('newDate').value;
+  const text = document.getElementById('newText').value.trim();
+  if (!date || !text) return;
+  getCo().entries.push({ date, text });
+  document.getElementById('newText').value = '';
+  save(); renderTimeline(getCo()); setSync('dirty');
+}
+
+document.getElementById('newText').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addEntry();
+});
+
+function delEntry(sortedIdx) {
+  const c = getCo();
+  const sorted = [...c.entries].sort((a,b) => a.date < b.date ? -1 : 1);
+  const t = sorted[sortedIdx];
+  c.entries = c.entries.filter(e => !(e.date===t.date && e.text===t.text));
+  save(); renderTimeline(c); setSync('dirty');
+}
+
+// ──────────────────────────────────────────
+// Company CRUD
+// ──────────────────────────────────────────
+function openAddModal() {
+  ['m_name','m_contact','m_biz','m_statusLabel','m_notionId'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('m_statusType').value = 'pending';
+  openModal('addModal');
+}
+
+function doAddCompany() {
+  const name = document.getElementById('m_name').value.trim();
+  if (!name) return;
+  const c = {
+    id: 'co_' + Date.now(),
+    name,
+    contact:     document.getElementById('m_contact').value.trim() || '—',
+    biz:         document.getElementById('m_biz').value.trim() || '—',
+    statusLabel: document.getElementById('m_statusLabel').value.trim() || '未設定',
+    statusType:  document.getElementById('m_statusType').value,
+    notionId:    document.getElementById('m_notionId').value.trim() || null,
+    entries: []
+  };
+  data.push(c);
+  cur = c.id;
+  save(); closeModal('addModal'); render(); setSync('dirty');
+}
+
+function openEditMeta() {
+  const c = getCo();
+  document.getElementById('e_name').value = c.name;
+  document.getElementById('e_contact').value = c.contact;
+  document.getElementById('e_biz').value = c.biz;
+  document.getElementById('e_statusLabel').value = c.statusLabel;
+  document.getElementById('e_statusType').value = c.statusType;
+  openModal('editModal');
+}
+
+function doEditMeta() {
+  const c = getCo();
+  c.name        = document.getElementById('e_name').value.trim() || c.name;
+  c.contact     = document.getElementById('e_contact').value.trim();
+  c.biz         = document.getElementById('e_biz').value.trim();
+  c.statusLabel = document.getElementById('e_statusLabel').value.trim();
+  c.statusType  = document.getElementById('e_statusType').value;
+  save(); closeModal('editModal'); render(); setSync('dirty');
+}
+
+function confirmDelete() {
+  const c = getCo();
+  if (!confirm(`「${c.name}」を削除しますか？\nこの操作は元に戻せません。`)) return;
+  data = data.filter(x => x.id !== cur);
+  cur = data[0]?.id ?? null;
+  save(); render(); setSync('dirty');
+}
+
+// ──────────────────────────────────────────
+// Modal helpers
+// ──────────────────────────────────────────
+const openModal  = id => document.getElementById(id).classList.add('open');
+const closeModal = id => document.getElementById(id).classList.remove('open');
+
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ──────────────────────────────────────────
+// Sync to Notion via Claude API
+// ──────────────────────────────────────────
+function setSync(state, msg) {
+  const dot = document.getElementById('dot');
+  const txt = document.getElementById('syncMsg');
+  const map = {
+    idle:    ['dot-idle',    '—'],
+    dirty:   ['dot-dirty',   '未同期（変更あり）'],
+    syncing: ['dot-syncing', 'Notionに同期中...'],
+    ok:      ['dot-ok',      '同期完了 ' + new Date().toLocaleTimeString('ja-JP')],
+    error:   ['dot-error',   msg || '同期エラー'],
+  };
+  const [cls, label] = map[state] || map.idle;
+  dot.className = 'dot ' + cls;
+  txt.textContent = label;
+}
+
+async function syncToNotion() {
+  const c = getCo();
+  if (!c.notionId) {
+    alert('NotionページIDが設定されていません。\n「企業情報を編集」からNotionページIDを追加するか、Claudeに「Notionを更新して」と依頼してください。');
+    return;
+  }
+
+  setSync('syncing');
+  document.getElementById('syncBtn').disabled = true;
+
+  const sorted = [...c.entries].sort((a,b) => a.date < b.date ? -1 : 1);
+  const rows = sorted.map(e => `| ${e.date} | ${e.text} |`).join('\n');
+  const mdContent = [
+    `**担当者:** ${c.contact}`,
+    `**業務内容:** ${c.biz}`,
+    `**ステータス:** ${c.statusLabel}`,
+    '',
+    '---',
+    '',
+    '## 時系列',
+    '',
+    '| 日付 | 内容 |',
+    '|---|---|',
+    rows
+  ].join('\n');
+
+  const prompt = `以下の内容でNotionページ（ID: ${c.notionId}）を更新してください。既存の内容を上書きしてください。\n\n企業名: ${c.name}\n\n${mdContent}\n\n更新が成功したら {"success": true} とだけ返してください。`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        mcp_servers: [{ type: 'url', url: 'https://mcp.notion.com/mcp', name: 'notion-mcp' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const d = await res.json();
+    const text = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    if (text.includes('success') || text.includes('更新') || text.includes('完了')) {
+      setSync('ok');
+    } else {
+      setSync('error', 'レスポンス確認失敗');
+    }
+  } catch(err) {
+    setSync('error', err.message);
+  } finally {
+    document.getElementById('syncBtn').disabled = false;
+  }
+}
+
+// ──────────────────────────────────────────
+// Init
+// ──────────────────────────────────────────
+render();
+setSync('idle');
+</script>
+</body>
+</html>
